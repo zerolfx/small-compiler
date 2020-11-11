@@ -42,7 +42,15 @@ TEST(arithmetic, z) {
 }
 
 TEST(variable, z) {
-  EXPECT_EQ(go("x:=1;write x"), "1\n");
+  EXPECT_EQ(go("x := 1; write x"), "1\n");
   EXPECT_EQ(go("x := 1; y := x + 1; write y"), "2\n");
   EXPECT_EQ(go("x := 1; x := x + 1; write x"), "2\n");
+}
+
+TEST(if_statement, z) {
+  EXPECT_EQ(go("if 2>=1 then write 1 else write 2 end"), "1\n");
+  EXPECT_EQ(go("if 2<=1 then write 1 else write 2 end"), "2\n");
+  EXPECT_EQ(go("if 2>=1 then write 1 end"), "1\n");
+  EXPECT_EQ(go("if 2<=1 then write 1 end"), "");
+  EXPECT_EQ(go("if 1 < 2 then write 1; write 2 end"), "1\n2\n");
 }

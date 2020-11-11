@@ -8,6 +8,8 @@
 #include <numeric>
 #include "env.h"
 
+std::string gen_label(const std::string& prefix = "L");
+
 class Env;
 
 struct Node {
@@ -16,16 +18,21 @@ struct Node {
 };
 
 struct Expr : Node {};
+struct Stmt : Node {};
 
 struct EmptyExpr : Expr {
   EmptyExpr() {}
-  std::string to_string() const override {
-    return {};
-  }
-  std::string gen(Env&) const override {
-    return {};
-  }
+  std::string to_string() const override { return {}; }
+  std::string gen(Env&) const override { return {}; }
 };
+static EmptyExpr *empty_expr = new EmptyExpr{};
+
+struct EmptyStmt : Stmt {
+  EmptyStmt() {}
+  std::string to_string() const override { return {}; }
+  std::string gen(Env&) const override { return {}; }
+};
+static EmptyStmt *empty_stmt = new EmptyStmt{};
 
 struct Identifier : Expr {
   explicit Identifier(std::string s) : name(std::move(s)) {}
@@ -65,14 +72,14 @@ struct Num : Expr {
   }
 };
 
-struct Stmt : Node {};
+
 
 struct AssignStmt : Stmt {
   Identifier *id;
-  Expr *exp;
-  AssignStmt(Expr* id, Expr* exp): id(dynamic_cast<Identifier*>(id)), exp(exp) {}
+  Expr *expr;
+  AssignStmt(Expr* id, Expr* expr): id(dynamic_cast<Identifier*>(id)), expr(expr) {}
   std::string to_string() const override {
-    return fmt::format("{} := {}", id->to_string(), exp->to_string());
+    return fmt::format("{} := {}", id->to_string(), expr->to_string());
   }
   std::string gen(Env& env) const override;
 };
@@ -84,22 +91,34 @@ struct ReadStmt : Stmt {
     return fmt::format("Read({})", id->to_string());
   }
   std::string gen(Env& env) const override {
-    return fmt::format("in i") + AssignStmt(id, new EmptyExpr{}).gen(env);
+    return fmt::format("in i") + AssignStmt(id, empty_expr).gen(env);
   }
 };
 
 struct WriteStmt : Stmt {
-  Expr *exp;
-  explicit WriteStmt(Expr *exp): exp(exp) {}
+  Expr *expr;
+  explicit WriteStmt(Expr *exp): expr(exp) {}
   std::string to_string() const override {
-    return fmt::format("Write({})", exp->to_string());
+    return fmt::format("Write({})", expr->to_string());
   }
   std::string gen(Env& env) const override {
-    return exp->gen(env) + "out i\nldc c '\\n'\nout c\n";
+    return expr->gen(env) + "out i\nldc c '\\n'\nout c\n";
   }
 };
 
-
+struct IfStmt : Stmt {
+  Expr *expr;
+  Stmt *s1, *s2;
+  IfStmt(Expr *expr, Stmt *s1, Stmt *s2): expr(expr), s1(s1), s2(s2) {}
+  std::string to_string() const override {
+    return fmt::format("If(Cond: {}, Then: {}, Else: {})", expr->to_string(), s1->to_string(), s2->to_string());
+  }
+  std::string gen(Env& env) const override {
+    auto else_label = gen_label("if"), end_label = gen_label("if");
+    return expr->gen(env) + fmt::format("fjp {}\n", else_label) + s1->gen(env) + fmt::format("ujp {}\n", end_label) +
+           fmt::format("{}:\n", else_label) + s2->gen(env) + fmt::format("{}:\n", end_label);
+  }
+};
 
 struct StmtSequence : Stmt {
   std::vector<Stmt*> stmts;

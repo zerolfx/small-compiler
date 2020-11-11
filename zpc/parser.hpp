@@ -81,6 +81,13 @@ Parser<R> operator %= (const Parser<std::tuple<Ts...>>& p, F&& f) {
   };
 }
 
+template<typename F, typename T>
+Parser<T> operator /= (const Parser<T>& p, F&& f) {
+  return [=](Scanner& in)->ParseResult<T> {
+    return p(in).flat_map([&](auto&& v)->optional<T> { if (f(v)) return v; else return {}; });
+  };
+}
+
 #define RESOLVE_OVERLOAD(...) \
 	[](auto&&...args)->decltype(auto){return __VA_ARGS__(std::forward<decltype(args)>(args)...);}
 
