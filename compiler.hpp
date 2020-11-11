@@ -51,7 +51,8 @@ auto build_parser() {
   expr = build_binary_parser(simple_exp, alt(lit("<="), lit(">="), lit("=="), lit(">"), lit("<")));
 
   static Parser<Stmt*> statement;
-  Parser<Stmt*> stmt_sequence = sep_by(lazy(statement), lit(";")) % [](auto&& stmts){ return new StmtSequence(stmts); };
+  auto lazy_stmt = lazy(statement);
+  Parser<Stmt*> stmt_sequence = sep_by(lazy_stmt, lit(";")) % [](auto&& stmts){ return new StmtSequence(stmts); };
   Parser<Stmt*> read_stmt = seq(kw("read"), identifier) %= [](auto&& _, auto&& id){ return new ReadStmt(id); };
   Parser<Stmt*> write_stmt = seq(kw("write"), expr) %= [](auto&& _, auto&& e){ return new WriteStmt(e); };
   Parser<Stmt*> assign_stmt = seq(identifier, lit(":="), expr) %= [](auto&& id, auto&& _, auto&& e){ return new AssignStmt(id, e); };
@@ -67,7 +68,27 @@ auto build_parser() {
   ) %= [](auto&& _1, auto&& e, auto&& _2, auto&& s1, auto&& s2, auto&& _3){
     return new IfStmt(e, s1, s2);
   };
-  statement = alt(read_stmt, write_stmt, assign_stmt, if_stmt);
+
+  Parser<Stmt*> for_stmt = seq(
+    kw("for"),
+    lazy_stmt, lit(";"), expr, lit(";"), lazy_stmt, kw("do"),
+    stmt_sequence
+  ) %= [](auto&& _1, auto&& s1, auto&& _2, auto&& s2, auto&& _3, auto&& s3, auto&& _4, auto&& s4) {
+    return new ForStmt(s1, s2, s3, s4);
+  };
+
+  Parser<Stmt*> do_while = seq(kw("do"), stmt_sequence, kw("while"), expr) %=
+    [](auto&& _1, auto&& s, auto&& _2, auto&& e) {
+      return new ForStmt(s, e, empty_stmt, s);
+    };
+
+  Parser<Stmt*> while_do = seq(kw("while"), expr, kw("do"), stmt_sequence) %=
+     [](auto&& _1, auto&& e, auto&& _2, auto&& s) {
+       return new ForStmt(empty_stmt, e, empty_stmt, s);
+     };
+
+
+  statement = alt(read_stmt, write_stmt, assign_stmt, if_stmt, for_stmt, do_while, while_do);
 
   return eof(stmt_sequence);
 }

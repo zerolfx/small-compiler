@@ -124,9 +124,25 @@ struct StmtSequence : Stmt {
   std::vector<Stmt*> stmts;
   explicit StmtSequence(const std::vector<Stmt*>& stmts): stmts(stmts) {}
   std::string to_string() const override {
+    static int indent = 0;
     std::string s;
-    for (auto& stmt: stmts) s += stmt->to_string() + '\n';
+    s += "{\n";
+    indent += 2;
+    for (auto& stmt: stmts) s += std::string(indent, ' ') + stmt->to_string() + '\n';
+    indent -= 2;
+    s += std::string(indent, ' ') + "}";
     return s;
+  }
+  std::string gen(Env& env) const override;
+};
+
+struct ForStmt : Stmt { // for (s1; s2; s3) s4
+  Stmt *s1, *s3, *s4;
+  Expr *s2;
+  ForStmt(Stmt* s1, Expr* s2, Stmt* s3, Stmt* s4): s1(s1), s2(s2), s3(s3), s4(s4) {}
+  std::string to_string() const override {
+    return fmt::format("For(Init: {}, Cond: {}, Update: {}, Body: {})",
+                       s1->to_string(), s2->to_string(), s3->to_string(), s4->to_string());
   }
   std::string gen(Env& env) const override;
 };

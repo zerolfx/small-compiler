@@ -3,7 +3,8 @@
 
 int main() {
   auto in = R"|(
-    write /*  1+ */1
+    for i := 1 ; i < 3 ; i := i + 1 do
+      write i
 )|";
   compile(in);
 }

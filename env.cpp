@@ -16,3 +16,7 @@ void Env::register_identifier(const Identifier* identifier) {
     throw std::runtime_error(fmt::format("Variable {} is already defined.", identifier->name));
   sym_table[identifier->name] = sym_table.size();
 }
+
+void Env::open_loop() {
+  loop_st.push({gen_label("loop"), gen_label("loop")});
+}

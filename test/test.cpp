@@ -66,3 +66,13 @@ TEST(comment, z) {
     // comment 2
   )"), "1\n");
 }
+
+TEST(for_loop, z) {
+  EXPECT_EQ(go("for i := 1; i < 3; i := i + 1 do write i"), "1\n2\n");
+  EXPECT_EQ(go("for i := 1; i <= 4; i := i + 1 do i := i + 1; write i"), "2\n4\n");
+}
+
+TEST(do_while, z) {
+  EXPECT_EQ(go("i:=0; do write i; i := i + 1 while i < 3"), "0\n1\n2\n");
+  EXPECT_EQ(go("i:=0; while i < 3 do write i; i := i + 1"), "0\n1\n2\n");
+}
