@@ -40,6 +40,9 @@ std::ostream& operator << (std::ostream& os, const Scanner& s) {
 }
 
 template<typename T>
+class Parser;
+
+template<typename T>
 class Parser {
 public:
   template<typename F>
@@ -47,14 +50,7 @@ public:
 
   Parser() {}
 
-  ParseResult<T> operator () (Scanner& in) const {
-    bool flip = !skip_ && in.skip;
-    if (flip) in.skip = !in.skip;
-    if (in.skip) while (!in.empty() && isspace(in[0])) in.remove_prefix(1);
-    auto r = p(in);
-    if (flip) in.skip = !in.skip;
-    return r;
-  }
+  ParseResult<T> operator () (Scanner& in) const;
 
   Parser<T>&& atom() && {
     skip_ = false;
@@ -64,7 +60,6 @@ private:
   std::function<ParseResult<T>(Scanner&)> p;
   bool skip_ = true;
 };
-
 
 
 template<typename F, typename T, typename R = std::remove_reference_t<std::invoke_result_t<F, T>>>
@@ -175,5 +170,121 @@ Parser<R> opt(const Parser<T>& p) {
     return p(in);
   };
 }
+
+
+// ========================= helper =========================
+
+
+Parser<std::string> lit(const std::string& s) {
+  return [=](Scanner& in)->ParseResult<std::string> {
+    if (in.starts_with(s)) {
+      in.remove_prefix(s.length());
+      return s;
+    } else {
+      return {};
+    }
+  };
+}
+
+template<typename R = char>
+Parser<R> ch(const std::function<bool(char)>& f) {
+  return [=](Scanner& in)->ParseResult<R> {
+    if (in.empty() || !f(in[0])) return {};
+    char c = in[0];
+    in.remove_prefix(1);
+    return c;
+  };
+}
+
+auto ch_range(char l, char r) {
+  return ch([=](char c){ return l <= c && c <= r; });
+}
+
+
+template<typename T, typename R = std::string>
+Parser<R> raw(const Parser<T>& p) {
+  return [=](Scanner& in)->ParseResult<R> {
+    auto in_bak = in;
+    if (!p(in)) return {};
+    return in_bak.substr(0, in_bak.length() - in.length());
+  };
+}
+
+template<typename T, typename R = std::vector<T>>
+Parser<R> many1(const Parser<T>& p) {
+  return [=](Scanner& in)->ParseResult<R> {
+    auto v = many(p)(in).value();
+    if (v.empty()) return {};
+    return v;
+  };
+}
+
+template<typename T, typename S, typename R = std::vector<T>>
+Parser<R> sep_by(const Parser<T>& p, const Parser<S>& s) {
+  return seq(p, many(seq(s, p))) %= [](T t, std::vector<std::tuple<S, T>> ts) {
+    R r; r.emplace_back(t);
+    for (auto& x: ts) r.emplace_back(std::get<1>(x));
+    return r;
+  };
+}
+
+template<typename T>
+Parser<T> eof(const Parser<T>& p) {
+  return [=](Scanner& in)->ParseResult<T> {
+    auto v = p(in);
+    if (in.empty()) return v;
+    return {};
+  };
+}
+
+struct Nothing {} nothing;
+
+template<typename T>
+Parser<Nothing> and_predicate(const Parser<T>& p) {
+  return [=](Scanner& in)->ParseResult<Nothing> {
+    auto in_bak = in;
+    auto v = p(in);
+    in = in_bak;
+    if (v) return nothing; else return {};
+  };
+}
+
+template<typename T>
+Parser<Nothing> not_predicate(const Parser<T>& p) {
+  return [=](Scanner& in)->ParseResult<Nothing> {
+    auto in_bak = in;
+    auto v = p(in);
+    in = in_bak;
+    if (!v) return nothing; else return {};
+  };
+}
+
+
+// ========================= end =========================
+
+template<typename T>
+ParseResult<T> Parser<T>::operator () (Scanner& in) const {
+  bool flip = !skip_ && in.skip;
+  if (flip) in.skip = !in.skip;
+  if (in.skip) {
+    auto any_char = ch([](char){ return true; });
+    while (alt(
+      ch(isspace),
+      seq(
+        lit("/*"),
+        many(seq(not_predicate(lit("*/")), any_char)),
+        lit("*/")
+      ),
+      seq(
+        lit("//"), many(seq(not_predicate(lit("\n")), any_char))
+      )
+    ).atom()(in));
+  }
+
+  auto r = p(in);
+  if (flip) in.skip = !in.skip;
+  return r;
+}
+
 
 #endif //ZPC_PARSER_HPP

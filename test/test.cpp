@@ -54,3 +54,15 @@ TEST(if_statement, z) {
   EXPECT_EQ(go("if 2<=1 then write 1 end"), "");
   EXPECT_EQ(go("if 1 < 2 then write 1; write 2 end"), "1\n2\n");
 }
+
+TEST(comment, z) {
+  EXPECT_EQ(go("write /*1+*/ 1"), "1\n");
+  EXPECT_EQ(go("write /* */ 1 /* */"), "1\n");
+  EXPECT_THROW(go("w/**/rite 1"), std::runtime_error);
+  EXPECT_EQ(go(R"(
+    write
+    // comment 1
+    1
+    // comment 2
+  )"), "1\n");
+}
