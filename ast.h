@@ -56,9 +56,20 @@ struct BinaryOp : Expr {
         {"+", "add"}, {"-", "sub"}, {"*", "mul"}, {"/", "div"},
         {">", "grt"}, {"<", "les"}, {">=", "geq"}, {"<=", "leq"}, {"==", "equ"}, {"!=", "neq"},
     };
-    return lhs->gen(env) + rhs->gen(env) + op_map[op] + " i\n";
+    auto code = op_map.count(op) ? op_map[op] + " i\n" : op + "\n";
+    return lhs->gen(env) + rhs->gen(env) + code;
   }
+};
 
+struct UnaryOp : Expr {
+  std::string op;
+  Expr* expr;
+  UnaryOp(std::string op, Expr* expr): op(std::move(op)), expr(expr) {}
+
+  std::string to_string() const override {
+    return fmt::format("({} {})", op, expr->to_string());
+  }
+  std::string gen(Env& env) const override;
 };
 
 struct Num : Expr {

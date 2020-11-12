@@ -32,23 +32,37 @@ std::set<std::string> kw_set;
 
 auto kw(const std::string& s) {
   kw_set.insert(s);
-  return lit(s).atom();
+  return lit(s);
 }
 
 auto build_parser() {
   auto letter = alt(ch_range('a', 'z'), ch_range('A', 'Z'));
   auto digit = ch_range('0', '9');
   Parser<Expr*> identifier = raw(seq(letter, many(alt(digit, letter)))).atom()
-      % [](auto&& s){ return new Identifier(s); }
-      /= [](Identifier* id){ return !kw_set.contains(id->name); };
+    % [](auto&& s){ return new Identifier(s); }
+    /= [](Identifier* id){ return !kw_set.contains(id->name); };
   Parser<Expr*> number = raw(many1(digit)).atom() % [](auto&& s){ return new Num(std::stoi(s)); };
 
   static Parser<Expr*> expr;
   Parser<Expr*> factor = alt(number, identifier,
                              seq(lit("("), lazy(expr), lit(")")) % RESOLVE_OVERLOAD(std::get<1>));
-  Parser<Expr*> term = build_binary_parser(factor, alt(lit("*"), lit("/")));
-  Parser<Expr*> simple_exp = build_binary_parser(term, alt(lit("+"), lit("-")));
-  expr = build_binary_parser(simple_exp, alt(lit("<="), lit(">="), lit("=="), lit(">"), lit("<")));
+  Parser<Expr*> unary_expr = seq(
+//    many(alt(kw("not"), kw("odd"), lit("++"), lit("--"))),
+    many(alt(kw("odd"), kw("not"), lit("++"), lit("--"))),
+    factor
+  ) %= [](const std::vector<std::string>& v, Expr* e) {
+//    for (auto x: v) std::cout << x << std::endl;
+    return std::accumulate(v.rbegin(), v.rend(), e, [](Expr* e, const std::string& op)->Expr* {
+      return new UnaryOp(op, e);
+    });
+  };
+  Parser<Expr*> expr_1 = build_binary_parser(unary_expr,
+    alt(lit("*"), lit("/"), lit("%") % [](auto&&){ return std::string("mod"); }));
+  Parser<Expr*> expr_2 = build_binary_parser(expr_1, alt(lit("+"), lit("-")));
+  Parser<Expr*> expr_3 = build_binary_parser(expr_2, alt(lit("<="), lit(">="), lit("=="), lit(">"), lit("<")));
+  Parser<Expr*> expr_4 = build_binary_parser(expr_3, lit("and"));
+  Parser<Expr*> expr_5 = build_binary_parser(expr_4, alt(lit("or"), lit("xor")));
+  expr = expr_5;
 
   static Parser<Stmt*> statement;
   auto lazy_stmt = lazy(statement);
@@ -57,14 +71,14 @@ auto build_parser() {
   Parser<Stmt*> write_stmt = seq(kw("write"), expr) %= [](auto&& _, auto&& e){ return new WriteStmt(e); };
   Parser<Stmt*> assign_stmt = seq(identifier, lit(":="), expr) %= [](auto&& id, auto&& _, auto&& e){ return new AssignStmt(id, e); };
   Parser<Stmt*> if_stmt = seq(
-      kw("if"),
-      expr,
-      kw("then"), stmt_sequence,
-      opt(seq(kw("else"), stmt_sequence)) % [](const optional<std::tuple<std::string, Stmt*>>& x)->Stmt* {
-        if (x.has_value()) return std::get<1>(x.value());
-        else return empty_stmt;
-      },
-      kw("end")
+    kw("if"),
+    expr,
+    kw("then"), stmt_sequence,
+    opt(seq(kw("else"), stmt_sequence)) % [](const optional<std::tuple<std::string, Stmt*>>& x)->Stmt* {
+      if (x.has_value()) return std::get<1>(x.value());
+      else return empty_stmt;
+    },
+    kw("end")
   ) %= [](auto&& _1, auto&& e, auto&& _2, auto&& s1, auto&& s2, auto&& _3){
     return new IfStmt(e, s1, s2);
   };
