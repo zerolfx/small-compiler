@@ -158,5 +158,19 @@ struct ForStmt : Stmt { // for (s1; s2; s3) s4
   std::string gen(Env& env) const override;
 };
 
+struct BreakStmt : Stmt {
+  std::string to_string() const override { return "Break"; }
+  std::string gen(Env& env) const override;
+};
+
+struct ContinueStmt : Stmt {
+  std::string to_string() const override { return "Continue"; }
+  std::string gen(Env& env) const override;
+};
+
+struct ExitStmt : Stmt {
+  std::string to_string() const override { return "Exit"; }
+  std::string gen(Env& env) const override { return "hlt\n"; }
+};
 
 #endif //ZPC_AST_H

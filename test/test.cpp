@@ -68,8 +68,8 @@ TEST(comment, z) {
 }
 
 TEST(for_loop, z) {
-  EXPECT_EQ(go("for i := 1; i < 3; i := i + 1 do write i"), "1\n2\n");
-  EXPECT_EQ(go("for i := 1; i <= 4; i := i + 1 do i := i + 1; write i"), "2\n4\n");
+  EXPECT_EQ(go("for i := 1; i < 3; i := i + 1 do write i end"), "1\n2\n");
+  EXPECT_EQ(go("for i := 1; i <= 4; i := i + 1 do i := i + 1; write i end"), "2\n4\n");
 }
 
 TEST(do_while, z) {
@@ -77,7 +77,7 @@ TEST(do_while, z) {
 }
 
 TEST(while_do, z) {
-  EXPECT_EQ(go("i:=0; while i < 3 do write i; i := i + 1"), "0\n1\n2\n");
+  EXPECT_EQ(go("i:=0; while i < 3 do write i; i := i + 1 end"), "0\n1\n2\n");
 }
 
 TEST(repeat_until, z) {
@@ -97,6 +97,23 @@ TEST(more_operators, z) {
   EXPECT_EQ(go("if 1 < 2 xor 1 < 2 then write 1 else write 0 end"), "0\n");
 }
 
-TEST(bug, why) {
+TEST(loop_break, z) {
+  EXPECT_EQ(go("for i := 1; i < 3; i := i + 1 do write i; break end; write i"), "1\n1\n");
+}
+
+TEST(loop_continue, z) {
+  EXPECT_EQ(go(R"(
+    for i := 1; i < 4; i := i + 1 do
+      if not odd i then continue end;
+      write i
+    end
+  )"), "1\n3\n");
+}
+
+TEST(exit, z) {
+  EXPECT_EQ(go("write 1; exit; write 2"), "1\n");
+}
+
+TEST(bug, fixed) {
   EXPECT_THROW(go("write odd1"), std::runtime_error);
 }

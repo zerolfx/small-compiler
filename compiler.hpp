@@ -32,7 +32,7 @@ std::set<std::string> kw_set;
 
 auto kw(const std::string& s) {
   kw_set.insert(s);
-  return seq(lit(s), and_predicate(alt(ch(isspace), eof))).atom() % RESOLVE_OVERLOAD(std::get<0>);
+  return seq(lit(s), and_predicate(alt(ch(isspace), eof, lit(";")))).atom() % RESOLVE_OVERLOAD(std::get<0>);
 }
 
 auto build_parser() {
@@ -65,9 +65,9 @@ auto build_parser() {
   static Parser<Stmt*> statement;
   auto lazy_stmt = lazy(statement);
   Parser<Stmt*> stmt_sequence = sep_by(lazy_stmt, lit(";")) % [](auto&& stmts){ return new StmtSequence(stmts); };
-  Parser<Stmt*> read_stmt = seq(kw("read"), identifier) %= [](auto&& _, auto&& id){ return new ReadStmt(id); };
-  Parser<Stmt*> write_stmt = seq(kw("write"), expr) %= [](auto&& _, auto&& e){ return new WriteStmt(e); };
-  Parser<Stmt*> assign_stmt = seq(identifier, lit(":="), expr) %= [](auto&& id, auto&& _, auto&& e){ return new AssignStmt(id, e); };
+  Parser<Stmt*> read_stmt = seq(kw("read"), identifier) %= [](auto&&, auto&& id){ return new ReadStmt(id); };
+  Parser<Stmt*> write_stmt = seq(kw("write"), expr) %= [](auto&&, auto&& e){ return new WriteStmt(e); };
+  Parser<Stmt*> assign_stmt = seq(identifier, lit(":="), expr) %= [](auto&& id, auto&&, auto&& e){ return new AssignStmt(id, e); };
   Parser<Stmt*> if_stmt = seq(
     kw("if"),
     expr,
@@ -77,35 +77,41 @@ auto build_parser() {
       else return empty_stmt;
     },
     kw("end")
-  ) %= [](auto&& _1, auto&& e, auto&& _2, auto&& s1, auto&& s2, auto&& _3){
+  ) %= [](auto&&, auto&& e, auto&&, auto&& s1, auto&& s2, auto&&){
     return new IfStmt(e, s1, s2);
   };
 
   Parser<Stmt*> for_stmt = seq(
     kw("for"),
     lazy_stmt, lit(";"), expr, lit(";"), lazy_stmt, kw("do"),
-    stmt_sequence
-  ) %= [](auto&& _1, auto&& s1, auto&& _2, auto&& s2, auto&& _3, auto&& s3, auto&& _4, auto&& s4) {
+    stmt_sequence, kw("end")
+  ) %= [](auto&&, auto&& s1, auto&&, auto&& s2, auto&&, auto&& s3, auto&&, auto&& s4, auto&&) {
     return new ForStmt(s1, s2, s3, s4);
   };
 
   Parser<Stmt*> do_while = seq(kw("do"), stmt_sequence, kw("while"), expr) %=
-    [](auto&& _1, auto&& s, auto&& _2, auto&& e) {
+    [](auto&&, auto&& s, auto&&, auto&& e) {
       return new ForStmt(s, e, empty_stmt, s);
     };
 
   Parser<Stmt*> repeat_until = seq(kw("repeat"), stmt_sequence, kw("until"), expr) %=
-    [](auto&& _1, auto&& s, auto&& _2, auto&& e) {
+    [](auto&&, auto&& s, auto&&, auto&& e) {
      return new ForStmt(s, new UnaryOp("not", e), empty_stmt, s);
     };
 
-  Parser<Stmt*> while_do = seq(kw("while"), expr, kw("do"), stmt_sequence) %=
-     [](auto&& _1, auto&& e, auto&& _2, auto&& s) {
+  Parser<Stmt*> while_do = seq(kw("while"), expr, kw("do"), stmt_sequence, kw("end")) %=
+     [](auto&&, auto&& e, auto&&, auto&& s, auto&&) {
        return new ForStmt(empty_stmt, e, empty_stmt, s);
      };
 
+  Parser<Stmt*> control_stmt = alt(
+    kw("break") % [](auto&&)->Stmt* { return new BreakStmt; },
+    kw("exit") % [](auto&&)->Stmt* { return new ExitStmt; },
+    kw("continue") % [](auto&&)->Stmt* { return new ContinueStmt; }
+  );
 
-  statement = alt(read_stmt, write_stmt, assign_stmt, if_stmt, for_stmt, repeat_until, do_while, while_do);
+
+  statement = alt(read_stmt, write_stmt, assign_stmt, if_stmt, for_stmt, repeat_until, do_while, while_do, control_stmt);
 
   Parser<Stmt*> program = seq(stmt_sequence, eof) % RESOLVE_OVERLOAD(std::get<0>);
 

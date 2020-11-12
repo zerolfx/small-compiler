@@ -3,7 +3,7 @@
 
 int main() {
   auto in = R"|(
-    write odd not 3
+    for i := 1; i < 3; i := i + 1 do break
 )|";
   compile(in);
 }

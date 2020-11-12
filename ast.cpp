@@ -31,7 +31,6 @@ std::string AssignStmt::gen(Env& env) const {
 
 std::string StmtSequence::gen(Env& env) const {
   auto v = std::views::transform(stmts, [&env](Stmt* s){ return s->gen(env); });
-//  auto v = stmts | std::views::transform();
   return std::accumulate(v.begin(), v.end(), std::string());
 }
 
@@ -47,4 +46,12 @@ std::string ForStmt::gen(Env& env) const {
              fmt::format("{}:\n", end_label);
   env.close_loop();
   return res;
+}
+
+std::string BreakStmt::gen(Env &env) const {
+  return fmt::format("ujp {}\n", env.get_loop_end());
+}
+
+std::string ContinueStmt::gen(Env &env) const {
+  return fmt::format("ujp {}\n", env.get_loop_start());
 }
