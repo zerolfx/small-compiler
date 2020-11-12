@@ -125,8 +125,9 @@ namespace detail {
   template<typename R, typename T, typename... Ts>
   Parser<R> alt(const Parser<T>& p, const Parser<Ts>& ...ps) {
     return [=](Scanner& in)->ParseResult<R> {
-      return attempt(p)(in).map([](auto v){ return R{v}; })
-          .or_else(alt<R>(ps...)(in));
+      auto res = attempt(p)(in).map([](auto v){ return R{v}; });
+      if (!res) res = alt<R>(ps...)(in);
+      return res;
     };
   }
 
