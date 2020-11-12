@@ -24,6 +24,7 @@ std::string UnaryOp::gen(Env &env) const {
 }
 
 std::string AssignStmt::gen(Env& env) const {
+  env.register_identifier(id);
   int addr = env.get_identifier(id);
   return expr->gen(env) + fmt::format("str i 0 {}\n", addr);
 }
