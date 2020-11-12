@@ -30,14 +30,15 @@ Parser<Expr*> build_binary_parser(const Parser<Expr*>& p, const Parser<std::stri
 
 std::set<std::string> kw_set;
 
-auto kw(const std::string& s) {
-  kw_set.insert(s);
-  return seq(lit(s), and_predicate(alt(ch(isspace), eof, lit(";")))).atom() % RESOLVE_OVERLOAD(std::get<0>);
-}
-
 auto build_parser() {
   auto letter = alt(ch_range('a', 'z'), ch_range('A', 'Z'));
   auto digit = ch_range('0', '9');
+
+  auto kw = [&](const std::string& s) {
+    kw_set.insert(s);
+    return seq(lit(s), not_predicate(alt(digit, letter))).atom() % RESOLVE_OVERLOAD(std::get<0>);
+  };
+
   Parser<Expr*> identifier = raw(seq(letter, many(alt(digit, letter)))).atom()
     % [](auto&& s){ return new Identifier(s); }
     /= [](Identifier* id){ return !kw_set.contains(id->name); };
