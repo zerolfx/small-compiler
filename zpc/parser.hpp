@@ -229,16 +229,13 @@ Parser<R> sep_by(const Parser<T>& p, const Parser<S>& s) {
   };
 }
 
-template<typename T>
-Parser<T> eof(const Parser<T>& p) {
-  return [=](Scanner& in)->ParseResult<T> {
-    auto v = p(in);
-    if (in.empty()) return v;
+struct Nothing {} nothing;
+
+Parser<Nothing> eof =
+  [](Scanner& in)->ParseResult<Nothing> {
+    if (in.empty()) return nothing;
     return {};
   };
-}
-
-struct Nothing {} nothing;
 
 template<typename T>
 Parser<Nothing> and_predicate(const Parser<T>& p) {

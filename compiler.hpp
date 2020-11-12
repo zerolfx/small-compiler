@@ -32,7 +32,7 @@ std::set<std::string> kw_set;
 
 auto kw(const std::string& s) {
   kw_set.insert(s);
-  return lit(s);
+  return seq(lit(s), and_predicate(alt(ch(isspace), eof))).atom() % RESOLVE_OVERLOAD(std::get<0>);
 }
 
 auto build_parser() {
@@ -47,11 +47,9 @@ auto build_parser() {
   Parser<Expr*> factor = alt(number, identifier,
                              seq(lit("("), lazy(expr), lit(")")) % RESOLVE_OVERLOAD(std::get<1>));
   Parser<Expr*> unary_expr = seq(
-//    many(alt(kw("not"), kw("odd"), lit("++"), lit("--"))),
     many(alt(kw("odd"), kw("not"), lit("++"), lit("--"))),
     factor
   ) %= [](const std::vector<std::string>& v, Expr* e) {
-//    for (auto x: v) std::cout << x << std::endl;
     return std::accumulate(v.rbegin(), v.rend(), e, [](Expr* e, const std::string& op)->Expr* {
       return new UnaryOp(op, e);
     });
@@ -109,7 +107,9 @@ auto build_parser() {
 
   statement = alt(read_stmt, write_stmt, assign_stmt, if_stmt, for_stmt, repeat_until, do_while, while_do);
 
-  return eof(stmt_sequence);
+  Parser<Stmt*> program = seq(stmt_sequence, eof) % RESOLVE_OVERLOAD(std::get<0>);
+
+  return program;
 }
 
 
