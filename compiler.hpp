@@ -96,13 +96,18 @@ auto build_parser() {
       return new ForStmt(s, e, empty_stmt, s);
     };
 
+  Parser<Stmt*> repeat_until = seq(kw("repeat"), stmt_sequence, kw("until"), expr) %=
+    [](auto&& _1, auto&& s, auto&& _2, auto&& e) {
+     return new ForStmt(s, new UnaryOp("not", e), empty_stmt, s);
+    };
+
   Parser<Stmt*> while_do = seq(kw("while"), expr, kw("do"), stmt_sequence) %=
      [](auto&& _1, auto&& e, auto&& _2, auto&& s) {
        return new ForStmt(empty_stmt, e, empty_stmt, s);
      };
 
 
-  statement = alt(read_stmt, write_stmt, assign_stmt, if_stmt, for_stmt, do_while, while_do);
+  statement = alt(read_stmt, write_stmt, assign_stmt, if_stmt, for_stmt, repeat_until, do_while, while_do);
 
   return eof(stmt_sequence);
 }

@@ -74,7 +74,14 @@ TEST(for_loop, z) {
 
 TEST(do_while, z) {
   EXPECT_EQ(go("i:=0; do write i; i := i + 1 while i < 3"), "0\n1\n2\n");
+}
+
+TEST(while_do, z) {
   EXPECT_EQ(go("i:=0; while i < 3 do write i; i := i + 1"), "0\n1\n2\n");
+}
+
+TEST(repeat_until, z) {
+  EXPECT_EQ(go("i:=0; repeat write i; i := i + 1 until i == 3"), "0\n1\n2\n");
 }
 
 TEST(more_operators, z) {
@@ -88,5 +95,8 @@ TEST(more_operators, z) {
   EXPECT_EQ(go("if 1 < 2 and 1 > 2 then write 1 else write 0 end"), "0\n");
   EXPECT_EQ(go("if 1 < 2 xor 1 > 2 then write 1 else write 0 end"), "1\n");
   EXPECT_EQ(go("if 1 < 2 xor 1 < 2 then write 1 else write 0 end"), "0\n");
+}
 
+TEST(bug, why) {
+  EXPECT_THROW(go("write odd1"), std::runtime_error);
 }
