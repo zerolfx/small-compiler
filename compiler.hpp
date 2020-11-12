@@ -57,7 +57,7 @@ auto build_parser() {
   Parser<Expr*> expr_1 = build_binary_parser(unary_expr,
     alt(lit("*"), lit("/"), lit("%") % [](auto&&){ return std::string("mod"); }));
   Parser<Expr*> expr_2 = build_binary_parser(expr_1, alt(lit("+"), lit("-")));
-  Parser<Expr*> expr_3 = build_binary_parser(expr_2, alt(lit("<="), lit(">="), lit("=="), lit(">"), lit("<")));
+  Parser<Expr*> expr_3 = build_binary_parser(expr_2, alt(lit("<="), lit(">="), lit("=="), lit(">"), lit("<"), lit("!=")));
   Parser<Expr*> expr_4 = build_binary_parser(expr_3, lit("and"));
   Parser<Expr*> expr_5 = build_binary_parser(expr_4, alt(lit("or"), lit("xor")));
   expr = expr_5;

@@ -117,3 +117,28 @@ TEST(exit, z) {
 TEST(bug, fixed) {
   EXPECT_THROW(go("write odd1"), std::runtime_error);
 }
+
+TEST(gcd, z) {
+  EXPECT_EQ(go(R"(
+    x := 72;
+    y := 192;
+    while y != 0 do
+      t := y;
+      y := x % y;
+      x := t
+    end;
+    write x
+  )"), "24\n");
+}
+
+TEST(prime, z) {
+  EXPECT_EQ(go(R"(
+    for i := 2; i <= 100; i := i + 1 do
+      flag := 1;
+      for j := 2; j * j <= i; j := j + 1 do
+        if i % j == 0 then flag := 0; break end
+      end;
+      if flag == 1 then write i end
+    end
+  )"), "2\n3\n5\n7\n11\n13\n17\n19\n23\n29\n31\n37\n41\n43\n47\n53\n59\n61\n67\n71\n73\n79\n83\n89\n97\n");
+}
