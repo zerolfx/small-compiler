@@ -110,8 +110,20 @@ auto build_parser() {
     kw("continue") % [](auto&&)->Stmt* { return new ContinueStmt; }
   );
 
+  Parser<Stmt*> case_stmt = seq(
+    kw("match"), expr, kw("of"),
+    many(
+      seq(kw("case"), expr, lit("=>"), stmt_sequence)
+      %= [](auto&&, auto&& e, auto&&, auto&& s){ return std::make_pair(e, s); }),
+    kw("end")
+  ) %= [](auto&&, auto&& e, auto&&, auto&& v, auto&&) {
+    return new CaseStmt(e, v);
+  };
 
-  statement = alt(read_stmt, write_stmt, assign_stmt, if_stmt, for_stmt, repeat_until, do_while, while_do, control_stmt);
+  statement = alt(
+    read_stmt, write_stmt, assign_stmt,
+    if_stmt, for_stmt, repeat_until, do_while, while_do, control_stmt, case_stmt
+  );
 
   Parser<Stmt*> program = seq(stmt_sequence, eof) % RESOLVE_OVERLOAD(std::get<0>);
 

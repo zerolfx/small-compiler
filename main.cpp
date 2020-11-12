@@ -3,7 +3,11 @@
 
 int main() {
   auto in = R"|(
-    for i := 1; i < 3; i := i + 1 do break
+    i := 1;
+    match i of
+      case 1 => write 1
+      case 2 => write 2
+    end
 )|";
   compile(in);
 }

@@ -110,6 +110,30 @@ TEST(loop_continue, z) {
   )"), "1\n3\n");
 }
 
+TEST(case_statement, z) {
+  EXPECT_EQ(go(R"(
+    i := 1;
+    match i of
+      case 1 => write 1
+      case 2 => write 2
+    end
+  )"), "1\n");
+  EXPECT_EQ(go(R"(
+    i := 2;
+    match i of
+      case 1 => write 1
+      case 2 => write 2
+    end
+  )"), "2\n");
+  EXPECT_EQ(go(R"(
+    match 1 + 1 of
+      case 1 => write 1
+      case 4 / 2 => write 2
+      case 3 => write 3
+    end
+  )"), "2\n");
+}
+
 TEST(exit, z) {
   EXPECT_EQ(go("write 1; exit; write 2"), "1\n");
 }
