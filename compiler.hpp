@@ -137,8 +137,22 @@ std::string compile(const std::string& in) {
   auto scanner = Scanner(in);
   auto res = parser(scanner);
   if (!res) {
-    std::cerr << "Compile Error" << std::endl;
-    std::cerr << "Remain: " << scanner << std::endl;
+    size_t furthest = in.size() - scanner.furthest;
+    std::string_view in_view = in;
+    int line_cnt = 0;
+    while (!in_view.empty()) {
+      ++line_cnt;
+      size_t pos = in_view.find_first_of('\n');
+      if (pos < furthest) {
+        in_view.remove_prefix(pos + 1);
+        furthest -= pos + 1;
+      } else {
+        std::cerr << fmt::format("Compiler Error at Line {}", line_cnt) << std::endl;
+        std::cerr << in_view.substr(0, pos) << std::endl;
+        std::cerr << std::string(furthest, ' ') << '^' << std::endl;
+        break;
+      }
+    }
     throw std::runtime_error("Compile Error");
   } else {
     std::cout << "Ast:\n" << res.value() << std::endl;

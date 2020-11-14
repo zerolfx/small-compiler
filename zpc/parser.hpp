@@ -22,7 +22,7 @@ class TD;
 
 class Scanner: std::string_view {
 public:
-  explicit Scanner(auto&& s): std::string_view(s) {}
+  explicit Scanner(auto&& s): std::string_view(s), furthest(size()) {}
   using std::string_view::remove_prefix;
   using std::string_view::starts_with;
   using std::string_view::size;
@@ -33,6 +33,7 @@ public:
   friend std::ostream& operator << (std::ostream& os, const Scanner& s);
 
   bool skip = true;
+  size_t furthest;
 };
 
 std::ostream& operator << (std::ostream& os, const Scanner& s) {
@@ -109,7 +110,10 @@ Parser<T> attempt(const Parser<T>& p) {
   return [=](Scanner& in)->ParseResult<T> {
     auto in_bak = in;
     auto v = p(in);
-    if (!v) in = in_bak;
+    if (!v) {
+      in_bak.furthest = std::min(in_bak.furthest, in.size());
+      in = in_bak;
+    }
     return v;
   };
 }
