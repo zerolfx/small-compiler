@@ -30,8 +30,9 @@ std::string AssignStmt::gen(Env& env) const {
 }
 
 std::string StmtSequence::gen(Env& env) const {
-  auto v = std::views::transform(stmts, [&env](Stmt* s){ return s->gen(env); });
-  return std::accumulate(v.begin(), v.end(), std::string());
+  std::string res;
+  for (auto stmt : stmts) res += stmt->gen(env);
+  return res;
 }
 
 std::string ForStmt::gen(Env& env) const {
