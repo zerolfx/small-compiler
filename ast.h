@@ -102,7 +102,7 @@ struct ReadStmt : Stmt {
     return fmt::format("Read({})", id->to_string());
   }
   std::string gen(Env& env) const override {
-    return fmt::format("in i") + AssignStmt(id, empty_expr).gen(env);
+    return fmt::format("in i\n") + AssignStmt(id, empty_expr).gen(env);
   }
 };
 
