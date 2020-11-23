@@ -19,6 +19,28 @@ std::ostream& operator << (std::ostream& os, const Node* n) {
   return os << n->to_string();
 }
 
+std::set<int> global_error_position;
+std::string global_input;
+void output_error_position(int furthest) {
+  const auto& s = global_input;
+  furthest = s.size() - furthest;
+  std::string_view in_view = s;
+  int line_cnt = 0;
+  while (!in_view.empty()) {
+    ++line_cnt;
+    size_t pos = in_view.find_first_of('\n');
+    if (pos < furthest) {
+      in_view.remove_prefix(pos + 1);
+      furthest -= pos + 1;
+    } else {
+      std::cerr << fmt::format("Compiler Error at Line {}", line_cnt) << std::endl;
+      std::cerr << in_view.substr(0, pos) << std::endl;
+      std::cerr << std::string(furthest, ' ') << '^' << std::endl;
+      break;
+    }
+  }
+}
+
 
 Parser<Expr*> build_binary_parser(const Parser<Expr*>& p, const Parser<std::string>& op) {
   return seq(p, many(seq(op, p))) %= [](Expr* e, const std::vector<std::tuple<std::string, Expr*>>& rest) {
@@ -28,9 +50,21 @@ Parser<Expr*> build_binary_parser(const Parser<Expr*>& p, const Parser<std::stri
   };
 }
 
+template<typename T, typename E>
+Parser<T> fallback(const Parser<T>& p, const T& v, const Parser<E>& e) {
+  return [=](Scanner& in)->ParseResult<T> {
+    auto res = p(in);
+    if (res) return res;
+    global_error_position.insert(in.furthest);
+    if (!e(in)) return {};
+    return v;
+  };
+}
+
 std::set<std::string> kw_set;
 
 auto build_parser() {
+  auto anychar = ch([](char){ return true; });
   auto letter = alt(ch_range('a', 'z'), ch_range('A', 'Z'));
   auto digit = ch_range('0', '9');
 
@@ -65,7 +99,12 @@ auto build_parser() {
 
   static Parser<Stmt*> statement;
   auto lazy_stmt = lazy(statement);
-  Parser<Stmt*> stmt_sequence = sep_by(lazy_stmt, lit(";")) % [](auto&& stmts){ return new StmtSequence(stmts); };
+  Parser<Stmt*> stmt_sequence = sep_by(
+    fallback(lazy_stmt,
+             static_cast<Stmt*>(empty_stmt),
+             many(seq(not_predicate(lit(";")), anychar))),
+    lit(";")
+  ) % [](auto&& stmts){ return new StmtSequence(stmts); };
   Parser<Stmt*> read_stmt = seq(kw("read"), identifier) %= [](auto&&, auto&& id){ return new ReadStmt(id); };
   Parser<Stmt*> write_stmt = seq(kw("write"), expr) %= [](auto&&, auto&& e){ return new WriteStmt(e); };
   Parser<Stmt*> assign_stmt = seq(identifier, lit(":="), expr) %= [](auto&& id, auto&&, auto&& e){ return new AssignStmt(id, e); };
@@ -133,25 +172,17 @@ auto build_parser() {
 
 
 std::string compile(const std::string& in) {
+  global_input = in;
+  global_error_position.clear();
   static auto parser = build_parser();
   auto scanner = Scanner(in);
   auto res = parser(scanner);
-  if (!res) {
-    size_t furthest = in.size() - scanner.furthest;
-    std::string_view in_view = in;
-    int line_cnt = 0;
-    while (!in_view.empty()) {
-      ++line_cnt;
-      size_t pos = in_view.find_first_of('\n');
-      if (pos < furthest) {
-        in_view.remove_prefix(pos + 1);
-        furthest -= pos + 1;
-      } else {
-        std::cerr << fmt::format("Compiler Error at Line {}", line_cnt) << std::endl;
-        std::cerr << in_view.substr(0, pos) << std::endl;
-        std::cerr << std::string(furthest, ' ') << '^' << std::endl;
-        break;
-      }
+  if (!res) global_error_position.insert(scanner.furthest);
+  if (!global_error_position.empty()) {
+    int cnt = 0;
+    for (auto pos: global_error_position | std::views::reverse) {
+      if (cnt++ == 3) break;
+      output_error_position(pos);
     }
     throw std::runtime_error("Compile Error");
   } else {
